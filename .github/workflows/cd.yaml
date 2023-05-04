@@ -1,0 +1,34 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to Fly.io
+        uses: superfly/flyctl-login@v1
+        with:
+          api_key: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: your-fly-app:latest
+
+      - name: Configure Fly.io app
+        run: flyctl apps configure your-fly-app
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy
+
+      - name: Promote to Production
+        run: flyctl deploy -i $(flyctl status --json | jq -r '.allocations[] | select(.desiredStatus == "running") | .id')
